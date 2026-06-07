@@ -37,6 +37,7 @@ EBTNodeResult::Type UBTTask_UseConsumable::ExecuteTask(UBehaviorTreeComponent& O
             if (Items[i]->GetItemType() == EItemType::Medkit)
             {
                 Inventory->UseItem(i);
+                Inventory->RemoveItem(i);
                 return EBTNodeResult::Succeeded;
             }
         }
@@ -50,6 +51,7 @@ EBTNodeResult::Type UBTTask_UseConsumable::ExecuteTask(UBehaviorTreeComponent& O
             if (Items[i]->GetItemType() == EItemType::Food)
             {
                 Inventory->UseItem(i);
+                Inventory->RemoveItem(i);
                 return EBTNodeResult::Succeeded;
             }
         }

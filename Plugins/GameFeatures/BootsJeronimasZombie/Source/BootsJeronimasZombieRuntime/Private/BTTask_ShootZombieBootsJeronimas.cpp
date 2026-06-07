@@ -47,15 +47,11 @@ EBTNodeResult::Type UBTTask_ShootZombie::ExecuteTask(UBehaviorTreeComponent& Own
     }
 
     bool bShot = Inventory->UseItem(WeaponSlot);
-    UE_LOG(LogTemp, Warning, TEXT("ShootZombie: slot=%d result=%s ammo_left=%.0f"),
-        WeaponSlot,
-        bShot ? TEXT("OK") : TEXT("FAIL"),
-        IsValid(Items[WeaponSlot]) ? Items[WeaponSlot]->GetValue() : 0.f);
 
-    // If weapon is now empty, update the blackboard flag
+    // Check if weapon is now empty and remove it
     if (!IsValid(Items[WeaponSlot]) || Items[WeaponSlot]->GetValue() <= 0)
     {
-        UE_LOG(LogTemp, Warning, TEXT("ShootZombie: Weapon empty"));
+        Inventory->RemoveItem(WeaponSlot);
         BBComp->SetValueAsBool(FName("HasWeapon"), false);
     }
 
