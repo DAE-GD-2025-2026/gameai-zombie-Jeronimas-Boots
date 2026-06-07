@@ -2,7 +2,7 @@
 #include "CoreMinimal.h"
 #include "BehaviorTree/BTTaskNode.h"
 #include "Navigation/PathFollowingComponent.h"
-#include "BTTask_Explore.generated.h"
+#include "BTTask_ExploreBootsJeronimas.generated.h"
 
 UCLASS()
 class BOOTSJERONIMASZOMBIERUNTIME_API UBTTask_Explore : public UBTTaskNode
