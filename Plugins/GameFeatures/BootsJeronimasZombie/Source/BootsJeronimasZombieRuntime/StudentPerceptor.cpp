@@ -175,18 +175,18 @@ void UStudentPerceptor::RefreshBestItem(UBlackboardComponent* BBComp, APawn* Own
 
 int32 UStudentPerceptor::GetItemPriority(ABaseItem* Item, float CurrentHealth)
 {
-    // Garbage is never worth going to
-    if (Item->GetItemType() == EItemType::Garbage)  return -1;
-
-    // Low health → medkit is top priority
-    if (Item->GetItemType() == EItemType::Medkit)
-        return (CurrentHealth < 30.f) ? 4 : 2;
-
-    // No weapon → prefer weapon over food
-    if (Item->GetItemType() == EItemType::Pistol 
-     || Item->GetItemType() == EItemType::Shotgun)  return 3;
-
-    if (Item->GetItemType() == EItemType::Food)     return 1;
-
-    return 0;
+    switch (Item->GetItemType())
+    {
+    case EItemType::Medkit:
+        return (CurrentHealth < 40.f) ? 4 : 2;
+    case EItemType::Pistol:
+    case EItemType::Shotgun:
+        return 3;
+    case EItemType::Food:
+        return 1;
+    case EItemType::Garbage:
+        return 0;  // lowest but still valid — need to clear spawn slots
+    default:
+        return 0;
+    }
 }

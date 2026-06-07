@@ -69,12 +69,9 @@ EBTNodeResult::Type UBTTask_GrabItem::ExecuteTask(UBehaviorTreeComponent& OwnerC
             : EBTNodeResult::Failed;
     }
 
-    // Use consumables immediately, keep weapons
     EItemType Type = TargetItem->GetItemType();
     if (Type == EItemType::Garbage)
         Inventory->RemoveItem(FreeSlot);
-    else if (Type == EItemType::Food || Type == EItemType::Medkit)
-        Inventory->UseItem(FreeSlot);
 
     BBComp->ClearValue(FName("TargetItem"));
     return EBTNodeResult::Succeeded;
