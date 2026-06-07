@@ -24,7 +24,6 @@ EBTNodeResult::Type UBTTask_ShootZombie::ExecuteTask(UBehaviorTreeComponent& Own
     UInventoryComponent* Inventory = Pawn->GetComponentByClass<UInventoryComponent>();
     if (!Inventory) return EBTNodeResult::Failed;
 
-    // Find a weapon slot with ammo
     const TArray<ABaseItem*>& Items = Inventory->GetInventory();
     int32 WeaponSlot = -1;
     for (int32 i = 0; i < Items.Num(); ++i)
@@ -41,14 +40,25 @@ EBTNodeResult::Type UBTTask_ShootZombie::ExecuteTask(UBehaviorTreeComponent& Own
 
     if (WeaponSlot == -1)
     {
-        UE_LOG(LogTemp, Warning, TEXT("ShootZombie: No weapon with ammo found"));
         BBComp->SetValueAsBool(FName("HasWeapon"), false);
+        return EBTNodeResult::Failed;
+    }
+
+    // Check weapon-specific range before shooting
+    EItemType WeaponType = Items[WeaponSlot]->GetItemType();
+    float DistToZombie = FVector::Dist(Pawn->GetActorLocation(), TargetZombie->GetActorLocation());
+
+    float MaxRange = (WeaponType == EItemType::Shotgun) ? ShotgunRange : PistolRange;
+
+    if (DistToZombie > MaxRange)
+    {
+        // Too far — not a failure, just not ready to shoot yet
+        // BT will re-evaluate next tick via FaceZombie + ShootZombie loop
         return EBTNodeResult::Failed;
     }
 
     bool bShot = Inventory->UseItem(WeaponSlot);
 
-    // Check if weapon is now empty and remove it
     if (!IsValid(Items[WeaponSlot]) || Items[WeaponSlot]->GetValue() <= 0)
     {
         Inventory->RemoveItem(WeaponSlot);
