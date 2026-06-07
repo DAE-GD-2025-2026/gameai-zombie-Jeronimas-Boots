@@ -11,7 +11,7 @@
 #include "Village/House/House.h"
 #include "Zombies/BaseZombie.h"
 #include "PurgeZones/PurgeZone.h"
-#include "StudentPerceptor.generated.h"
+#include "StudentPerceptorBootsJeronimas.generated.h"
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class BOOTSJERONIMASZOMBIERUNTIME_API UStudentPerceptor : public UActorComponent

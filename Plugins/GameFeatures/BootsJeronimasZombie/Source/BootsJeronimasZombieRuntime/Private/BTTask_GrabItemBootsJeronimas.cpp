@@ -4,7 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "Common/InventoryComponent.h"
 #include "Items/BaseItem.h"
-#include "BootsJeronimasZombieRuntime/StudentPerceptor.h"
+#include "BootsJeronimasZombieRuntime/StudentPerceptorBootsJeronimas.h"
 
 UBTTask_GrabItem::UBTTask_GrabItem()
 {
