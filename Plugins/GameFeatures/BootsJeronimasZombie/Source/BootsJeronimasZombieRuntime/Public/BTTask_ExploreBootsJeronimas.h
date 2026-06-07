@@ -4,7 +4,6 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "BTTask_ExploreBootsJeronimas.generated.h"
 
-
 UCLASS()
 class BOOTSJERONIMASZOMBIERUNTIME_API UBTTask_Explore : public UBTTaskNode
 {
@@ -16,27 +15,24 @@ public:
     virtual EBTNodeResult::Type AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
 private:
-    // Spiral state
+    FVector CalculateNextSpiralPoint() const;
+
     FVector SpiralOrigin = FVector::ZeroVector;
     float CurrentRadius = 0.0f;
     float CurrentAngle = 0.0f;
-
-    // How much to grow the radius each step
-    UPROPERTY(EditAnywhere, Category = "Explore")
-    float RadiusStep = 400.0f;
-
-    // How many points per ring before expanding
-    UPROPERTY(EditAnywhere, Category = "Explore")
-    float AngleStep = 60.0f;
-
-    // Max radius before resetting spiral from new origin
-    UPROPERTY(EditAnywhere, Category = "Explore")
-    float MaxRadius = 5000.0f;
-
     bool bSpiralInitialized = false;
 
-    FVector CalculateNextSpiralPoint() const;
-    
-    UPROPERTY(EditAnywhere, Category = "Exploration")
-    float ScanRotationSpeed = 90.0f;
+    // Every N steps, take a step back
+    int32 StepCount = 0;
+
+    UPROPERTY(EditAnywhere, Category="Explore")
+    float RadiusStep = 400.0f;
+    UPROPERTY(EditAnywhere, Category="Explore")
+    float AngleStep = 60.0f;
+    UPROPERTY(EditAnywhere, Category="Explore")
+    float MaxRadius = 5000.0f;
+    UPROPERTY(EditAnywhere, Category="Explore")
+    float BacktrackDistance = 120.0f;
+    UPROPERTY(EditAnywhere, Category="Explore")
+    int32 BacktrackEveryNSteps = 3;
 };

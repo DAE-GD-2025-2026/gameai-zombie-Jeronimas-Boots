@@ -3,7 +3,6 @@
 #include "NavigationSystem.h"
 #include "GameFramework/Pawn.h"
 #include "Navigation/PathFollowingComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 
 UBTTask_Explore::UBTTask_Explore()
 {
@@ -32,43 +31,44 @@ EBTNodeResult::Type UBTTask_Explore::ExecuteTask(UBehaviorTreeComponent& OwnerCo
     UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(Pawn->GetWorld());
     if (!NavSys) return EBTNodeResult::Failed;
 
-    // Take full control of rotation
-    UCharacterMovementComponent* MoveComp = Pawn->GetComponentByClass<UCharacterMovementComponent>();
-    if (MoveComp)
-    {
-        MoveComp->bOrientRotationToMovement = false;
-        MoveComp->bUseControllerDesiredRotation = false;
-    }
-
-    // Tell the pawn to use the controller's yaw
-    Pawn->bUseControllerRotationYaw = true;
-    Pawn->bUseControllerRotationPitch = false;
-    Pawn->bUseControllerRotationRoll = false;
-
     if (!bSpiralInitialized)
     {
         SpiralOrigin = Pawn->GetActorLocation();
         CurrentRadius = RadiusStep;
         CurrentAngle = 0.0f;
+        StepCount = 0;
         bSpiralInitialized = true;
     }
 
-    CurrentAngle += AngleStep;
+    StepCount++;
 
-    if (CurrentAngle >= 360.0f)
+    FVector TargetPoint;
+
+    // Every N steps walk back behind the survivor briefly
+    if (StepCount % BacktrackEveryNSteps == 0)
     {
-        CurrentAngle = 0.0f;
-        CurrentRadius += RadiusStep;
+        FVector Backward = -Pawn->GetActorForwardVector();
+        TargetPoint = Pawn->GetActorLocation() + Backward * BacktrackDistance;
     }
-
-    if (CurrentRadius > MaxRadius)
+    else
     {
-        SpiralOrigin = Pawn->GetActorLocation();
-        CurrentRadius = RadiusStep;
-        CurrentAngle = 0.0f;
-    }
+        // Normal spiral advance
+        CurrentAngle += AngleStep;
+        if (CurrentAngle >= 360.0f)
+        {
+            CurrentAngle = 0.0f;
+            CurrentRadius += RadiusStep;
+        }
 
-    FVector TargetPoint = CalculateNextSpiralPoint();
+        if (CurrentRadius > MaxRadius)
+        {
+            SpiralOrigin = Pawn->GetActorLocation();
+            CurrentRadius = RadiusStep;
+            CurrentAngle = 0.0f;
+        }
+
+        TargetPoint = CalculateNextSpiralPoint();
+    }
 
     FNavLocation NavLocation;
     bool bFound = NavSys->ProjectPointToNavigation(
@@ -112,19 +112,8 @@ void UBTTask_Explore::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMem
         return;
     }
 
-    APawn* Pawn = AIController->GetPawn();
-    UCharacterMovementComponent* MoveComp = Pawn ? Pawn->GetComponentByClass<UCharacterMovementComponent>() : nullptr;
-
-    // Rotate via controller so the pawn actually follows it
-    FRotator ControlRotation = AIController->GetControlRotation();
-    ControlRotation.Yaw += ScanRotationSpeed * DeltaSeconds;
-    AIController->SetControlRotation(ControlRotation);
-
     if (AIController->GetMoveStatus() == EPathFollowingStatus::Idle)
     {
-        // Restore rotation control before handing back
-        if (MoveComp) MoveComp->bOrientRotationToMovement = true;
-        if (Pawn) Pawn->bUseControllerRotationYaw = false;
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
     }
 }
@@ -132,13 +121,6 @@ void UBTTask_Explore::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMem
 EBTNodeResult::Type UBTTask_Explore::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
     AAIController* AIController = OwnerComp.GetAIOwner();
-    if (AIController)
-    {
-        APawn* Pawn = AIController->GetPawn();
-        UCharacterMovementComponent* MoveComp = Pawn ? Pawn->GetComponentByClass<UCharacterMovementComponent>() : nullptr;
-        if (MoveComp) MoveComp->bOrientRotationToMovement = true;
-        if (Pawn) Pawn->bUseControllerRotationYaw = false;
-        AIController->StopMovement();
-    }
+    if (AIController) AIController->StopMovement();
     return EBTNodeResult::Aborted;
 }
