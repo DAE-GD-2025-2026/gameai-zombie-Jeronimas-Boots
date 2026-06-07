@@ -32,13 +32,18 @@ EBTNodeResult::Type UBTTask_Explore::ExecuteTask(UBehaviorTreeComponent& OwnerCo
     UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(Pawn->GetWorld());
     if (!NavSys) return EBTNodeResult::Failed;
 
-    // Disable movement component rotation so we can rotate freely
+    // Take full control of rotation
     UCharacterMovementComponent* MoveComp = Pawn->GetComponentByClass<UCharacterMovementComponent>();
     if (MoveComp)
     {
         MoveComp->bOrientRotationToMovement = false;
         MoveComp->bUseControllerDesiredRotation = false;
     }
+
+    // Tell the pawn to use the controller's yaw
+    Pawn->bUseControllerRotationYaw = true;
+    Pawn->bUseControllerRotationPitch = false;
+    Pawn->bUseControllerRotationRoll = false;
 
     if (!bSpiralInitialized)
     {
@@ -110,21 +115,16 @@ void UBTTask_Explore::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMem
     APawn* Pawn = AIController->GetPawn();
     UCharacterMovementComponent* MoveComp = Pawn ? Pawn->GetComponentByClass<UCharacterMovementComponent>() : nullptr;
 
-    // Rotate pawn to scan surroundings while exploring
-    if (Pawn)
-    {
-        FRotator CurrentRotation = Pawn->GetActorRotation();
-        CurrentRotation.Yaw += ScanRotationSpeed * DeltaSeconds;
-        Pawn->SetActorRotation(CurrentRotation);
-    }
+    // Rotate via controller so the pawn actually follows it
+    FRotator ControlRotation = AIController->GetControlRotation();
+    ControlRotation.Yaw += ScanRotationSpeed * DeltaSeconds;
+    AIController->SetControlRotation(ControlRotation);
 
     if (AIController->GetMoveStatus() == EPathFollowingStatus::Idle)
     {
-        // Restore rotation before handing control back
-        if (MoveComp)
-        {
-            MoveComp->bOrientRotationToMovement = true;
-        }
+        // Restore rotation control before handing back
+        if (MoveComp) MoveComp->bOrientRotationToMovement = true;
+        if (Pawn) Pawn->bUseControllerRotationYaw = false;
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
     }
 }
@@ -136,10 +136,8 @@ EBTNodeResult::Type UBTTask_Explore::AbortTask(UBehaviorTreeComponent& OwnerComp
     {
         APawn* Pawn = AIController->GetPawn();
         UCharacterMovementComponent* MoveComp = Pawn ? Pawn->GetComponentByClass<UCharacterMovementComponent>() : nullptr;
-        if (MoveComp)
-        {
-            MoveComp->bOrientRotationToMovement = true;
-        }
+        if (MoveComp) MoveComp->bOrientRotationToMovement = true;
+        if (Pawn) Pawn->bUseControllerRotationYaw = false;
         AIController->StopMovement();
     }
     return EBTNodeResult::Aborted;
