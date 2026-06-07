@@ -4,6 +4,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "BTTask_ExploreBootsJeronimas.generated.h"
 
+
 UCLASS()
 class BOOTSJERONIMASZOMBIERUNTIME_API UBTTask_Explore : public UBTTaskNode
 {
@@ -12,6 +13,7 @@ public:
     UBTTask_Explore();
     virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
     virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
+    virtual EBTNodeResult::Type AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
 private:
     // Spiral state
@@ -34,4 +36,7 @@ private:
     bool bSpiralInitialized = false;
 
     FVector CalculateNextSpiralPoint() const;
+    
+    UPROPERTY(EditAnywhere, Category = "Exploration")
+    float ScanRotationSpeed = 90.0f;
 };

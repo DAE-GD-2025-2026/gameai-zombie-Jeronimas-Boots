@@ -3,6 +3,7 @@
 #include "NavigationSystem.h"
 #include "GameFramework/Pawn.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 UBTTask_Explore::UBTTask_Explore()
 {
@@ -12,7 +13,6 @@ UBTTask_Explore::UBTTask_Explore()
 
 FVector UBTTask_Explore::CalculateNextSpiralPoint() const
 {
-    // Convert polar coordinates to cartesian
     float RadAngle = FMath::DegreesToRadians(CurrentAngle);
     return SpiralOrigin + FVector(
         CurrentRadius * FMath::Cos(RadAngle),
@@ -32,7 +32,14 @@ EBTNodeResult::Type UBTTask_Explore::ExecuteTask(UBehaviorTreeComponent& OwnerCo
     UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(Pawn->GetWorld());
     if (!NavSys) return EBTNodeResult::Failed;
 
-    // Initialize spiral origin at first run from agent's starting position
+    // Disable movement component rotation so we can rotate freely
+    UCharacterMovementComponent* MoveComp = Pawn->GetComponentByClass<UCharacterMovementComponent>();
+    if (MoveComp)
+    {
+        MoveComp->bOrientRotationToMovement = false;
+        MoveComp->bUseControllerDesiredRotation = false;
+    }
+
     if (!bSpiralInitialized)
     {
         SpiralOrigin = Pawn->GetActorLocation();
@@ -41,17 +48,14 @@ EBTNodeResult::Type UBTTask_Explore::ExecuteTask(UBehaviorTreeComponent& OwnerCo
         bSpiralInitialized = true;
     }
 
-    // Advance the spiral
     CurrentAngle += AngleStep;
 
-    // Once we've done a full circle, expand the radius
     if (CurrentAngle >= 360.0f)
     {
         CurrentAngle = 0.0f;
         CurrentRadius += RadiusStep;
     }
 
-    // Reset spiral from current position if we've gone too far out
     if (CurrentRadius > MaxRadius)
     {
         SpiralOrigin = Pawn->GetActorLocation();
@@ -59,18 +63,15 @@ EBTNodeResult::Type UBTTask_Explore::ExecuteTask(UBehaviorTreeComponent& OwnerCo
         CurrentAngle = 0.0f;
     }
 
-    // Calculate the ideal spiral point
     FVector TargetPoint = CalculateNextSpiralPoint();
 
-    // Snap to navmesh — the ideal point may not be walkable
     FNavLocation NavLocation;
     bool bFound = NavSys->ProjectPointToNavigation(
         TargetPoint,
         NavLocation,
-        FVector(200.0f, 200.0f, 200.0f)  // search extent
+        FVector(200.0f, 200.0f, 200.0f)
     );
 
-    // Fall back to random reachable point if spiral point is off navmesh
     if (!bFound)
     {
         bFound = NavSys->GetRandomReachablePointInRadius(
@@ -106,10 +107,40 @@ void UBTTask_Explore::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMem
         return;
     }
 
-    // When movement finishes, let BT restart the task to pick next spiral point
-    EPathFollowingStatus::Type MoveStatus = AIController->GetMoveStatus();
-    if (MoveStatus == EPathFollowingStatus::Idle)
+    APawn* Pawn = AIController->GetPawn();
+    UCharacterMovementComponent* MoveComp = Pawn ? Pawn->GetComponentByClass<UCharacterMovementComponent>() : nullptr;
+
+    // Rotate pawn to scan surroundings while exploring
+    if (Pawn)
     {
+        FRotator CurrentRotation = Pawn->GetActorRotation();
+        CurrentRotation.Yaw += ScanRotationSpeed * DeltaSeconds;
+        Pawn->SetActorRotation(CurrentRotation);
+    }
+
+    if (AIController->GetMoveStatus() == EPathFollowingStatus::Idle)
+    {
+        // Restore rotation before handing control back
+        if (MoveComp)
+        {
+            MoveComp->bOrientRotationToMovement = true;
+        }
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
     }
+}
+
+EBTNodeResult::Type UBTTask_Explore::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+{
+    AAIController* AIController = OwnerComp.GetAIOwner();
+    if (AIController)
+    {
+        APawn* Pawn = AIController->GetPawn();
+        UCharacterMovementComponent* MoveComp = Pawn ? Pawn->GetComponentByClass<UCharacterMovementComponent>() : nullptr;
+        if (MoveComp)
+        {
+            MoveComp->bOrientRotationToMovement = true;
+        }
+        AIController->StopMovement();
+    }
+    return EBTNodeResult::Aborted;
 }
