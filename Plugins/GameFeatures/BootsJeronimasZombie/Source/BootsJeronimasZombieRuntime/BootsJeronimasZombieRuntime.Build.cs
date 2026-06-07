@@ -26,7 +26,7 @@ public class BootsJeronimasZombieRuntime : ModuleRules
 			new string[]
 			{
 				"Core",
-				// ... add other public dependencies that you statically link with here ...
+				"GameAI_Zombie"// ... add other public dependencies that you statically link with here ...
 			}
 			);
 			
@@ -39,7 +39,8 @@ public class BootsJeronimasZombieRuntime : ModuleRules
 				"Slate",
 				"SlateCore",
 				"AIModule",
-				// ... add private dependencies that you statically link with here ...	
+				"GameAI_Zombie",
+				"NavigationSystem"// ... add private dependencies that you statically link with here ...	
 			}
 			);
 		

@@ -1,0 +1,81 @@
+#include "BTTask_GrabItemBootsJeronimas.h"
+#include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "GameFramework/Pawn.h"
+#include "Common/InventoryComponent.h"
+#include "Items/BaseItem.h"
+#include "BootsJeronimasZombieRuntime/StudentPerceptor.h"
+
+UBTTask_GrabItem::UBTTask_GrabItem()
+{
+    NodeName = TEXT("Grab Item");
+}
+
+EBTNodeResult::Type UBTTask_GrabItem::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+{
+    AAIController* AIController = OwnerComp.GetAIOwner();
+    UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent();
+    if (!AIController || !BBComp) return EBTNodeResult::Failed;
+
+    APawn* Pawn = AIController->GetPawn();
+    ABaseItem* TargetItem = Cast<ABaseItem>(BBComp->GetValueAsObject(FName("TargetItem")));
+    if (!Pawn || !TargetItem) return EBTNodeResult::Failed;
+
+    UInventoryComponent* Inventory = Pawn->GetComponentByClass<UInventoryComponent>();
+    if (!Inventory) return EBTNodeResult::Failed;
+
+    // Find any free slot
+    const TArray<ABaseItem*>& Items = Inventory->GetInventory();
+    int32 FreeSlot = -1;
+    for (int32 i = 0; i < Items.Num(); ++i)
+    {
+        if (Items[i] == nullptr) { FreeSlot = i; break; }
+    }
+
+    if (FreeSlot == -1)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("GrabItem: Inventory full"));
+        BBComp->ClearValue(FName("TargetItem"));
+        return EBTNodeResult::Failed;
+    }
+
+    float Dist = FVector::Dist(Pawn->GetActorLocation(), TargetItem->GetActorLocation());
+    float Range = Inventory->GetPickupRange();
+    UE_LOG(LogTemp, Warning, TEXT("GrabItem: dist=%.1f range=%.1f slot=%d item=%s"), 
+        Dist, Range, FreeSlot, *TargetItem->GetName());
+
+    bool bGrabbed = Inventory->GrabItem(FreeSlot, TargetItem);
+    UE_LOG(LogTemp, Warning, TEXT("GrabItem: result=%s"), bGrabbed ? TEXT("OK") : TEXT("FAIL"));
+
+    if (!bGrabbed)
+    {
+        // Don't give up — remove this item from known items and try the next one
+        UStudentPerceptor* Perceptor = Pawn->GetComponentByClass<UStudentPerceptor>();
+        if (Perceptor)
+        {
+            Perceptor->RemoveKnownItem(TargetItem);
+            BBComp->ClearValue(FName("TargetItem"));
+            Perceptor->RefreshBestItem(BBComp, Pawn);
+        }
+        else
+        {
+            BBComp->ClearValue(FName("TargetItem"));
+        }
+
+        // Succeed so the BT loops back to MoveToItem if there's a new target
+        // Failed would send us back to exploring
+        return BBComp->GetValueAsObject(FName("TargetItem")) != nullptr 
+            ? EBTNodeResult::Succeeded 
+            : EBTNodeResult::Failed;
+    }
+
+    // Use consumables immediately, keep weapons
+    EItemType Type = TargetItem->GetItemType();
+    if (Type == EItemType::Garbage)
+        Inventory->RemoveItem(FreeSlot);
+    else if (Type == EItemType::Food || Type == EItemType::Medkit)
+        Inventory->UseItem(FreeSlot);
+
+    BBComp->ClearValue(FName("TargetItem"));
+    return EBTNodeResult::Succeeded;
+}
