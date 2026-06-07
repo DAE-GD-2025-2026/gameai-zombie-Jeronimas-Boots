@@ -36,7 +36,6 @@ EBTNodeResult::Type UBTTask_UseConsumable::ExecuteTask(UBehaviorTreeComponent& O
             if (!Items[i]) continue;
             if (Items[i]->GetItemType() == EItemType::Medkit)
             {
-                UE_LOG(LogTemp, Warning, TEXT("UseConsumable: Using medkit at health %.1f%%"), HealthPct);
                 Inventory->UseItem(i);
                 return EBTNodeResult::Succeeded;
             }
@@ -50,7 +49,6 @@ EBTNodeResult::Type UBTTask_UseConsumable::ExecuteTask(UBehaviorTreeComponent& O
             if (!Items[i]) continue;
             if (Items[i]->GetItemType() == EItemType::Food)
             {
-                UE_LOG(LogTemp, Warning, TEXT("UseConsumable: Using food at stamina %.1f%%"), StaminaPct);
                 Inventory->UseItem(i);
                 return EBTNodeResult::Succeeded;
             }

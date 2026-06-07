@@ -34,18 +34,14 @@ EBTNodeResult::Type UBTTask_GrabItem::ExecuteTask(UBehaviorTreeComponent& OwnerC
 
     if (FreeSlot == -1)
     {
-        UE_LOG(LogTemp, Warning, TEXT("GrabItem: Inventory full"));
         BBComp->ClearValue(FName("TargetItem"));
         return EBTNodeResult::Failed;
     }
 
     float Dist = FVector::Dist(Pawn->GetActorLocation(), TargetItem->GetActorLocation());
     float Range = Inventory->GetPickupRange();
-    UE_LOG(LogTemp, Warning, TEXT("GrabItem: dist=%.1f range=%.1f slot=%d item=%s"), 
-        Dist, Range, FreeSlot, *TargetItem->GetName());
 
     bool bGrabbed = Inventory->GrabItem(FreeSlot, TargetItem);
-    UE_LOG(LogTemp, Warning, TEXT("GrabItem: result=%s"), bGrabbed ? TEXT("OK") : TEXT("FAIL"));
 
     if (!bGrabbed)
     {
@@ -62,8 +58,6 @@ EBTNodeResult::Type UBTTask_GrabItem::ExecuteTask(UBehaviorTreeComponent& OwnerC
             BBComp->ClearValue(FName("TargetItem"));
         }
 
-        // Succeed so the BT loops back to MoveToItem if there's a new target
-        // Failed would send us back to exploring
         return BBComp->GetValueAsObject(FName("TargetItem")) != nullptr 
             ? EBTNodeResult::Succeeded 
             : EBTNodeResult::Failed;

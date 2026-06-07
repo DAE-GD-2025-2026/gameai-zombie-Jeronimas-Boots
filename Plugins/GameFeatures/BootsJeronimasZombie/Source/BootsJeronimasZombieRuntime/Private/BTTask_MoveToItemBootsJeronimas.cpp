@@ -10,8 +10,6 @@ UBTTask_MoveToItem::UBTTask_MoveToItem()
     bNotifyTick = true;
 }
 
-// BTTask_MoveToItemBootsJeronimas.cpp
-
 EBTNodeResult::Type UBTTask_MoveToItem::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
     AAIController* AIController = OwnerComp.GetAIOwner();
@@ -27,9 +25,6 @@ EBTNodeResult::Type UBTTask_MoveToItem::ExecuteTask(UBehaviorTreeComponent& Owne
     UInventoryComponent* Inventory = Pawn ? Pawn->GetComponentByClass<UInventoryComponent>() : nullptr;
     
     float AcceptanceRadius = Inventory ? Inventory->GetPickupRange() : 100.0f;
-
-    UE_LOG(LogTemp, Warning, TEXT("MoveToItem: START -> %s (acceptance=%.1f)"), 
-        *TargetItem->GetName(), AcceptanceRadius);
 
     AIController->MoveToActor(TargetItem, AcceptanceRadius);
     return EBTNodeResult::InProgress;
@@ -48,7 +43,6 @@ void UBTTask_MoveToItem::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Node
     // Always succeed when movement stops — GrabItem handles the rest
     if (AIController->GetMoveStatus() == EPathFollowingStatus::Idle)
     {
-        UE_LOG(LogTemp, Warning, TEXT("MoveToItem: DONE"));
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
     }
 }
