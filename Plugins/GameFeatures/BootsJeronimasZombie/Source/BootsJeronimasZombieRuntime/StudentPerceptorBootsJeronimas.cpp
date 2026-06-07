@@ -6,6 +6,7 @@
 #include "Village/House/House.h"
 #include "Zombies/BaseZombie.h"
 #include "PurgeZones/PurgeZone.h"
+#include "Common/InventoryComponent.h"
 
 UStudentPerceptor::UStudentPerceptor()
 {
@@ -21,43 +22,6 @@ void UStudentPerceptor::BeginPlay()
         PerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &UStudentPerceptor::OnPerceptionUpdated);
     }
 }
-
-// void UStudentPerceptor::UpdateClosestItem(UBlackboardComponent* BBComp) const
-// {
-//     // Don't switch targets while already moving to one
-//     // This prevents the decorator from aborting MoveToItem mid-movement
-//     if (BBComp->GetValueAsObject(FName("TargetItem")) != nullptr)
-//     {
-//         // Already have a target — only update if it's no longer valid
-//         ABaseItem* Current = Cast<ABaseItem>(BBComp->GetValueAsObject(FName("TargetItem")));
-//         if (IsValid(Current) && KnownItems.Contains(Current))
-//         {
-//             return; // Keep current target, don't switch
-//         }
-//     }
-//
-//     APawn* OwnerPawn = Cast<APawn>(GetOwner());
-//     if (!OwnerPawn || !BBComp) return;
-//
-//     ABaseItem* ClosestItem = nullptr;
-//     float ClosestDist = FLT_MAX;
-//
-//     for (ABaseItem* Item : KnownItems)
-//     {
-//         if (!IsValid(Item)) continue;
-//         float Dist = FVector::Dist(OwnerPawn->GetActorLocation(), Item->GetActorLocation());
-//         if (Dist < ClosestDist)
-//         {
-//             ClosestDist = Dist;
-//             ClosestItem = Item;
-//         }
-//     }
-//
-//     if (ClosestItem)
-//         BBComp->SetValueAsObject(FName("TargetItem"), ClosestItem);
-//     else
-//         BBComp->ClearValue(FName("TargetItem"));
-// }
 
 void UStudentPerceptor::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
@@ -123,6 +87,29 @@ void UStudentPerceptor::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 
 void UStudentPerceptor::RefreshBestItem(UBlackboardComponent* BBComp, APawn* OwnerPawn)
 {
+    // Check if inventory has any free or garbage slots worth targeting
+    UInventoryComponent* Inventory = OwnerPawn->GetComponentByClass<UInventoryComponent>();
+    if (Inventory)
+    {
+        const TArray<ABaseItem*>& InvItems = Inventory->GetInventory();
+        bool bHasFreeSlot = false;
+        for (int32 i = 0; i < InvItems.Num(); ++i)
+        {
+            if (!IsValid(InvItems[i]) || InvItems[i]->GetItemType() == EItemType::Garbage)
+            {
+                bHasFreeSlot = true;
+                break;
+            }
+        }
+
+        if (!bHasFreeSlot)
+        {
+            // Inventory full with useful items — no point targeting anything
+            BBComp->ClearValue(Key_TargetItem);
+            return;
+        }
+    }
+
     // Purge any items that have been picked up / destroyed
     TArray<ABaseItem*> ToRemove;
     for (ABaseItem* Item : KnownItems)
